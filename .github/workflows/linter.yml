@@ -1,0 +1,25 @@
+name: Code Quality (Ruff Linter)
+
+# 1. WORKFLOW TRIGGERS
+on:
+  pull_request:
+    branches:
+      - main
+
+# 2. DEFINED JOBS
+jobs:
+  lint:
+    name: Run Ruff
+    runs-on: ubuntu-latest # Uses a GitHub-hosted Ubuntu Linux runner
+    
+    # 3. JOB STEPS
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # Checks out the repository code to the runner's workspace
+
+      - name: Run Ruff Linter
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check ."
+        # Runs the official Ruff tool to analyze the codebase for linting errors
