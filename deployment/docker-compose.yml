@@ -1,0 +1,62 @@
+services:
+
+  mariadb:
+    # es la imagen oficial de mariadb, que incluye el conector para python, lo que facilita la conexión desde el api a la base de datos sin necesidad de instalar dependencias adicionales en el contenedor del api
+    image: mariadb:latest
+    container_name: mariadb
+    # en documentación oficial (dockerhub) de mariadb se recomienda usar variables de entorno para configurar el usuario, contraseña y base de datos
+    environment:
+      MARIADB_USER: api_user
+      MARIADB_PASSWORD: api_pwd
+      MARIADB_ROOT_PASSWORD: root_pwd
+      MARIADB_DATABASE: tasks_db
+    # la base de datos se expone solo a la red interna de docker, no al host, por eso se usa 'expose' en lugar de 'ports'
+    expose:
+      - "3306"
+    # se monta un volumen para persistir los datos de la base de datos, mapeando al directorio en el contenedor indicado en la documentación oficial de la imagen (dockerhub)
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    # la api y la base de datos se encuentran ane una red interna tipo bridge para que puedan comunicarse entre sí, pero no estén expuestas al host
+    networks:
+      - tasks_net
+    # esta parte de aquí la puso 'Gordon'. Tras un largo rato viendo que no había forma de conectar con la base de datos pregunté y dió esta solución
+    # solventa el asunto ya comentado en clase de que al api intenta conectar a la base de datos antes de que esta esté inicializada y lista para aceptar conexiones, lo que provoca errores de conexión
+    # con esto se da un periodo de gracia de 30 segundos a partrie de cual se lanzan hasta 5 pings antes de declara la base de datos 'unhealty'
+    # se da 5s hasta dar u ping por fallido y se reintentan cada 10s, lo que da un margen de hasta 1 minuto para que la base de datos esté lista antes de que el api deje de intentar conectar
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  api: 
+    # la imagen se construye a partir del Dockerfile ubicado en el mismo directorio que el docker-compose.yml, lo que permite incluir todas las dependencias necesarias para ejecutar el api, incluyendo el conector de mariadb para python
+    build: ./
+    container_name: tasks_api
+    # se expone al host en el puerto 8080, mapeando al puerto 8000 del contenedor donde se ejecuta el api, lo que permite acceder al api desde el host a través de localhost:8080
+    ports:
+      - "8080:8000"
+    # cadena de conexión en base a documentación. Ver valores de las variables de entorno de MARIADB_USER y MARIADB_PASSWORD en el servicio de mariadb
+    # el puerto en la red interna es siempre el del contendor
+    volumes:
+      - jupyter_env:/app/env
+      - jupyter_model:/app/model
+    environment:
+      DATABASE_URL: "mariadb+mariadbconnector://api_user:api_pwd@mariadb:3306/tasks_db"
+    # la api y la base de datos se encuentran ane una red interna tipo bridge para que puedan comunicarse entre sí, pero no estén expuestas al host
+    networks:
+      - jupyter_net
+    depends_on:
+      mariadb:
+        # introducido por 'Gordon' para solventar el problema de que el api intente conectar a la base de datos antes de que esta esté inicializada y lista para aceptar conexiones, lo que provoca errores de conexión
+        condition: service_healthy
+
+volumes:
+  mariadb_data:
+  jupyter_env:
+  jupyter_model:
+
+networks:
+  jupyter_net:
+    driver: bridge

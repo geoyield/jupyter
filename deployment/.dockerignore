@@ -1,0 +1,13 @@
+__pycache__
+*/__pycache__
+*.pyc
+env/
+.venv/
+doc/
+*.db
+*.yml
+*docker*
+*Dockerfile*
+log/
+data/
+test_api.py

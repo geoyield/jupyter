@@ -9,21 +9,20 @@ import requests
 import tempfile
 import pandas as pd
 from pathlib import Path
-
-metrics = {"total_predictions": 0}
-
-model = None
-scaler = None
-encoders = None
+from dotenv import load_dotenv
+import metrics
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+scaler = None
+model = None
+encoders = None
 
 temp_files = []
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, scaler, encoders, temp_files
     
     try:
         # Get GitHub repo info from environment or use defaults
@@ -91,6 +90,10 @@ async def lifespan(app: FastAPI):
         except:
             pass
 
+# Load environment variables from .env file
+env_path = os.path.join(os.path.dirname(__file__), 'env', '.env')
+load_dotenv(env_path)
+
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/health")
@@ -99,7 +102,6 @@ def health():
 
 @app.post("/predict")
 async def predict(request: Request):
-    global model, scaler, encoders
     start = time.time()
     
     try:
@@ -129,3 +131,4 @@ async def predict(request: Request):
 @app.get("/metrics", response_class=PlainTextResponse)
 def metrics_endpoint():
     return f'total_predictions {metrics["total_predictions"]}\n'
+
