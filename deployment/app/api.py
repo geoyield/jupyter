@@ -10,7 +10,7 @@ import tempfile
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
-from .metrics import metrics
+from .metrics.metrics import metrics
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
